@@ -2,8 +2,9 @@ Attribute VB_Name = "mdlFileSys"
 Option Explicit
 
 '##############################################################################################
-'Purpose: Used for File System operations
-'Author:  Richard Mewett ©2004
+'Purpose:   Used for File System operations
+'Author:    Richard Mewett ©2000
+'Version:   1.2.0
 
 'Credits:
 'The GetFolder() code was sourced from VB.NET (Brad Martinez & Randy Birch)
@@ -144,6 +145,69 @@ Public Declare Function DeleteFile Lib "kernel32" Alias "DeleteFileA" (ByVal lpF
 Public Declare Function GetTempPath Lib "kernel32" Alias "GetTempPathA" (ByVal nBufferLength As Long, ByVal lpBuffer As String) As Long
 
 
+Public Function CreateFolderTree(ByVal sPath As String) As Boolean
+    Dim nPos As Integer
+
+    On Error GoTo CreateFolderTreeError
+    
+    nPos = InStr(sPath, "\")
+    While nPos > 0
+        If Not FolderExists(Left$(sPath, nPos - 1)) Then
+            MkDir Left$(sPath, nPos - 1)
+        End If
+        nPos = InStr(nPos + 1, sPath, "\")
+    Wend
+    If Not FolderExists(sPath) Then MkDir sPath
+    
+    CreateFolderTree = True
+    Exit Function
+
+CreateFolderTreeError:
+    Exit Function
+End Function
+
+Public Function GetFileFromPath(sPath As String) As String
+    Dim nPos As Integer
+    
+    nPos = InStrRev(sPath, "\")
+    
+    If nPos > 0 Then
+        GetFileFromPath = Mid$(sPath, nPos + 1)
+    Else
+        GetFileFromPath = sPath
+    End If
+End Function
+
+Public Function GetFileName(sFilename As String) As String
+    Dim lPos As Long
+    
+    lPos = InStr(sFilename, ".")
+    If lPos > 0 Then
+        GetFileName = Left$(sFilename, lPos - 1)
+    Else
+        GetFileName = sFilename
+    End If
+End Function
+
+
+
+Public Function GetFolderFromPath(sPath As String) As String
+    Dim nPos As Integer
+    Dim sFolder As String
+
+    nPos = InStrRev(sPath, "\")
+    
+    If nPos > 0 Then
+        sFolder = Left$(sPath, nPos - 1)
+        If Right$(sFolder, 1) = ":" Then
+            sFolder = sFolder & "\"
+        End If
+        GetFolderFromPath = sFolder
+    End If
+End Function
+
+
+
 
 Public Sub ShowProperties(sFilename As String, hwndOwner As Long)
     '##############################################################################################
@@ -234,13 +298,13 @@ Public Function GetFolder(hWnd As Long, Optional sPrompt As String, Optional sSt
     'Displays a Folder Browser to select a Folder
     '##############################################################################################
     
-    Dim BI As BROWSEINFO
+    Dim bi As BROWSEINFO
     Dim pidl As Long
     Dim sFolder As String
     Dim pos As Integer
     
     'Fill the BROWSEINFO structure with the needed data
-    With BI
+    With bi
         'hwnd of the window that receives messages from the call. Can be your application or the handle from GetDesktopWindow().
         .hOwner = hWnd
         
@@ -263,7 +327,7 @@ Public Function GetFolder(hWnd As Long, Optional sPrompt As String, Optional sSt
     End With
         
     'show the browse for folders dialog
-     pidl = SHBrowseForFolder(BI)
+     pidl = SHBrowseForFolder(bi)
     
     'the dialog has closed, so parse & display the user's returned folder selection contained in pidl
     sFolder = Space$(MAX_PATH)
